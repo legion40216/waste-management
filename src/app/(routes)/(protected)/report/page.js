@@ -2,6 +2,7 @@ import { currentUser } from "@/hooks/server-auth-utils";
 import Client from "./components/client";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import prisma from "@/lib/prismadb";
 
 export default async function Page() {
   const user = await currentUser()

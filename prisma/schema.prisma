@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  USER
+  DRIVER
+  ADMIN
+}
+
+enum ReportStatus {
+  PENDING
+  ASSIGNED
+  COMPLETED
+  CANCELLED
+}
+
+enum AssignmentStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+model User {
+  id              String    @id @default(uuid())
+  name            String?
+  email           String?   @unique
+  emailVerified   DateTime?
+  image           String?
+  hashedPassword  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  role            UserRole  @default(USER)
+  reports         Report[]  // Reports created by the user
+  assignments     Assignment[] // Assignments for drivers
+  driver          Driver?   // Link to the Driver model (if the user is a driver)
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  userId      String
+  description String
+  imageUrl    String
+  latitude    Float
+  longitude   Float
+  status      ReportStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignment  Assignment?  // Link to the assignment
+}
+
+model Driver {
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  user            User           @relation(fields: [userId], references: [id])
+  currentLocation DriverLocation?
+  assignments     Assignment[]   // Relationship to Assignment
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model Assignment {
+  id        String           @id @default(uuid())
+  reportId  String
+  report    Report           @relation(fields: [reportId], references: [id])
+  driverId  String
+  driver    Driver           @relation(fields: [driverId], references: [id])
+  userId    String           // Added this line
+  user      User             @relation(fields: [userId], references: [id]) // Added this line
+  status    AssignmentStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([reportId]) // Ensure a report can only be assigned to one driver
+}
+
+model DriverLocation {
+  id            String    @id @default(uuid()) // Changed from cuid() to uuid()
+  driverId      String    @unique
+  driver        Driver    @relation(fields: [driverId], references: [id])
+  latitude      Float
+  longitude     Float
+  heading       Float?    // Direction the driver is moving
+  speed         Float?    // Current speed in km/h
+  lastUpdate    DateTime  @default(now())
+  isOnline      Boolean   @default(false)
+
+  @@index([driverId]) // Add index for faster queries
+}
